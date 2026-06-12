@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OneLab — Partner Database + Google Sheets Sync</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#0A2342;--teal:#00897B;--teal2:#00BFA5;--mint:#E0F2F1;--gold:#FFB300;--border:#D0D8E0;--gray:#546E7A;--text:#1C3041;--success:#2E7D32;--danger:#C62828}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:var(--text)}
+header{background:var(--navy);padding:13px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+header h1{color:#fff;font-size:15px;font-weight:700}
+.hbadges{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+.b-data{background:var(--teal);color:#fff}
+.b-sync{background:#34A853;color:#fff;display:none}
+.b-unsync{background:var(--gold);color:#1a1a1a;display:none}
+.main{max-width:1100px;margin:0 auto;padding:20px 14px}
+
+/* Cards */
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 14px rgba(0,0,0,.07);padding:22px;margin-bottom:16px}
+.card h2{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Form */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.05em}
+.fg input,.fg select{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border .2s}
+.fg input:focus,.fg select:focus{border-color:var(--teal)}
+.input-row{display:flex;gap:8px}
+.input-row input{flex:1}
+
+/* Buttons */
+.btn{padding:10px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-teal{background:var(--teal);color:#fff}.btn-teal:hover:not(:disabled){background:#00695C}
+.btn-navy{background:var(--navy);color:#fff}.btn-navy:hover:not(:disabled){background:#1a3a6b}
+.btn-green{background:#34A853;color:#fff}.btn-green:hover:not(:disabled){background:#2E7D32}
+.btn-outline{background:#fff;color:var(--navy);border:2px solid var(--navy)}.btn-outline:hover:not(:disabled){background:var(--navy);color:#fff}
+.btn-warn{background:#fff;color:var(--danger);border:2px solid var(--danger)}.btn-warn:hover:not(:disabled){background:var(--danger);color:#fff}
+.btn-gold{background:var(--gold);color:#1a1a1a}.btn-gold:hover:not(:disabled){background:#e6a100}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+/* Status */
+.status-box{padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-top:10px;display:none}
+.st-ok{background:#E8F5E9;color:#1B5E20;display:block}
+.st-err{background:#FFEBEE;color:var(--danger);display:block}
+.st-warn{background:#FFF8E1;color:#5D4037;display:block}
+.st-info{background:#E3F2FD;color:#0D47A1;display:block}
+
+/* Sync indicator */
+.sync-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--mint);border-radius:8px;margin-bottom:14px;font-size:13px;display:none}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.sync-dot.pulse{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Category chips */
+.cat-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--gray);transition:all .2s;user-select:none}
+.chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* Progress */
+.prog-wrap{background:#E0F2F1;border-radius:6px;height:7px;margin-top:10px;overflow:hidden;display:none}
+.prog-bar{background:var(--teal);height:100%;border-radius:6px;transition:width .3s;width:0}
+.prog-text{font-size:12px;color:var(--gray);margin-top:5px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px;display:none}
+.sc{background:#fff;border-radius:10px;padding:11px;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.sn{font-size:24px;font-weight:800;color:var(--navy)}
+.sl{font-size:11px;color:var(--gray);margin-top:2px}
+
+/* Filter */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;display:none}
+.filter-bar input{flex:1;min-width:150px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none}
+.filter-bar input:focus{border-color:var(--teal)}
+.filter-bar select{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#fff;outline:none}
+
+/* Table */
+.tbl-wrap{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--navy);color:#fff;padding:10px 11px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+tbody tr:hover{background:#f4fcf9}
+td{padding:9px 11px;vertical-align:middle}
+.tn{font-weight:600;color:var(--navy);font-size:13px}
+.ta{color:var(--gray);font-size:11px;margin-top:1px}
+.tp{color:var(--teal);font-size:12px}
+.tr{color:var(--gold);font-weight:700;font-size:12px}
+.cb{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.c-klinik{background:#E0F2F1;color:#085041}.c-dokter{background:#E8EAF6;color:#283593}
+.c-apotek{background:#FFF8E1;color:#5D4037}.c-lab{background:#FCE4EC;color:#880E4F}
+.c-gym{background:#E8F5E9;color:#1B5E20}.c-other{background:#F3E5F5;color:#4A148C}
+.sb{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.s-new{background:#E0F2F1;color:#085041}
+.s-con{background:#FFF8E1;color:#5D4037}
+.s-act{background:#E8F5E9;color:#1B5E20}
+.ac{display:flex;gap:4px;flex-wrap:wrap}
+.ab{padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap}
+.ab:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.ab-maps{color:var(--teal);border-color:var(--teal)}.ab-maps:hover{background:var(--teal)!important;border-color:var(--teal)!important}
+.ab-wa{color:#25D366;border-color:#25D366}.ab-wa:hover{background:#25D366!important;border-color:#25D366!important}
+.ab-del{color:var(--danger);border-color:var(--danger)}.ab-del:hover{background:var(--danger)!important;border-color:var(--danger)!important}
+.sync-icon{font-size:10px;margin-left:3px}
+.synced{color:#34A853}.unsynced{color:var(--gold)}
+
+/* Empty */
+.empty{text-align:center;padding:50px 20px;color:var(--gray)}
+.empty .ico{font-size:40px;margin-bottom:10px}
+.empty h3{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:5px}
+
+/* Pagination */
+.pg{display:flex;gap:5px;justify-content:center;padding:12px;flex-wrap:wrap}
+.pg button{padding:5px 11px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:12px;cursor:pointer;font-weight:600}
+.pg button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:14px}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:22px;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px}
+.mf{margin-bottom:11px}
+.mf label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px}
+.mf .v{font-size:13px;color:var(--text);padding:6px 0;line-height:1.5}
+.mf select,.mf textarea{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.modal-btns{display:flex;gap:8px;margin-top:14px}
+
+/* Toast */
+.toast{position:fixed;bottom:18px;right:18px;padding:11px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;opacity:0;transform:translateY(50px);transition:all .25s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-ok{background:#1B5E20;color:#fff}
+.toast-err{background:var(--danger);color:#fff}
+.toast-info{background:var(--navy);color:#fff}
+
+#map-container{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+@media(max-width:640px){
+  .row2{grid-template-columns:1fr}
+  thead th:nth-child(n+5){display:none}
+  td:nth-child(n+5){display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🗺 OneLab — Partner Database</h1>
+    <span style="color:var(--teal2);font-size:11px">Google Maps + Google Sheets Sync</span>
+  </div>
+  <div class="hbadges">
+    <span class="badge b-data" id="b-data">0 data</span>
+    <span class="badge b-sync" id="b-sync">✅ Tersync</span>
+    <span class="badge b-unsync" id="b-unsync">⚠️ Belum sync</span>
+  </div>
+</header>
+
+<div id="map-container"><div id="gmap"></div></div>
+<div class="main">
+
+<!-- STEP 1: SHEETS -->
+<div class="card">
+  <h2><span class="step-num">1</span> Google Sheets Sync</h2>
+  <div class="fg" style="margin-bottom:10px">
+    <label>Web App URL (dari Google Apps Script)</label>
+    <div class="input-row">
+      <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/AKfy.../exec">
+      <button class="btn btn-green" onclick="pingSheet()">🔗 Test Koneksi</button>
+      <button class="btn btn-gold" onclick="pullFromSheet()">⬇️ Pull Data</button>
+    </div>
+  </div>
+  <div id="sheet-status" class="status-box"></div>
+  <div style="margin-top:10px;background:#F8F9FA;border-radius:8px;padding:12px;font-size:12px;color:var(--gray);line-height:1.7">
+    <strong style="color:var(--navy)">Belum punya Web App URL?</strong> Ikuti langkah:<br>
+    1. Buka Google Sheet → <strong>Extensions → Apps Script</strong><br>
+    2. Hapus semua kode → paste kode dari file <code>apps_script.js</code><br>
+    3. Klik <strong>Deploy → New Deployment → Web App</strong><br>
+    4. Execute as: <strong>Me</strong> | Who has access: <strong>Anyone</strong><br>
+    5. Klik Deploy → salin URL → paste di kolom atas
+  </div>
+</div>
+
+<!-- STEP 2: MAPS API -->
+<div class="card">
+  <h2><span class="step-num">2</span> Google Maps API</h2>
+  <div class="fg">
+    <label>API Key</label>
+    <div class="input-row">
+      <input type="password" id="api-key" placeholder="AIza...">
+      <button class="btn btn-teal" onclick="toggleVis()">👁</button>
+      <button class="btn btn-teal" onclick="loadMaps()">⚡ Sambungkan</button>
+    </div>
+  </div>
+  <div id="maps-status" class="status-box"></div>
+</div>
+
+<!-- STEP 3: SEARCH -->
+<div class="card">
+  <h2><span class="step-num">3</span> Cari Data Mitra</h2>
+  <div class="row2" style="margin-bottom:14px">
+    <div class="fg">
+      <label>Area</label>
+      <select id="area" onchange="handleArea()">
+        <option value="-6.2615,106.7754">Bintaro & Pd. Aren, Tangsel</option>
+        <option value="-6.3306,106.7455">Ciputat & Pamulang, Tangsel</option>
+        <option value="-6.1745,106.8316">Jakarta Selatan</option>
+        <option value="-6.1184,106.8316">Jakarta Pusat</option>
+        <option value="-6.9147,107.6098">Sukabumi Kota</option>
+        <option value="-6.9932,107.5200">Sukabumi Kabupaten</option>
+        <option value="-6.1351,106.1703">Serang, Banten</option>
+        <option value="-6.2393,106.0017">Cilegon, Banten</option>
+        <option value="custom">📍 Koordinat Custom</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Radius</label>
+      <select id="radius">
+        <option value="2000">2 km</option>
+        <option value="5000" selected>5 km</option>
+        <option value="10000">10 km</option>
+        <option value="20000">20 km</option>
+      </select>
+    </div>
+    <div class="fg" id="lat-g" style="display:none"><label>Latitude</label><input type="text" id="c-lat" placeholder="-6.2615"></div>
+    <div class="fg" id="lng-g" style="display:none"><label>Longitude</label><input type="text" id="c-lng" placeholder="106.7754"></div>
+  </div>
+  <div class="fg" style="margin-bottom:14px">
+    <label>Kategori</label>
+    <div class="cat-row">
+      <span class="chip on" data-q="klinik pratama">🏥 Klinik</span>
+      <span class="chip on" data-q="dokter praktik umum">👨‍⚕️ Dokter</span>
+      <span class="chip on" data-q="apotek">💊 Apotek</span>
+      <span class="chip" data-q="laboratorium klinik">🔬 Lab</span>
+      <span class="chip" data-q="puskesmas">🏨 Puskesmas</span>
+      <span class="chip" data-q="dokter spesialis">🩺 Spesialis</span>
+      <span class="chip" data-q="gym fitness center">🏋️ Gym</span>
+      <span class="chip" data-q="rumah sakit">🏦 RS</span>
+    </div>
+  </div>
+  <div class="action-row">
+    <button class="btn btn-navy" id="btn-search" onclick="startSearch()" disabled>🔍 Cari Data</button>
+    <button class="btn btn-green" id="btn-sync" onclick="syncToSheet()" disabled>☁️ Sync ke Sheets</button>
+    <button class="btn btn-outline" id="btn-csv" onclick="exportCSV()" disabled>📥 Export CSV</button>
+    <button class="btn btn-warn" id="btn-clear" onclick="clearAll()" disabled>🗑 Hapus Semua</button>
+  </div>
+  <div class="prog-wrap" id="prog-wrap"><div class="prog-bar" id="prog"></div></div>
+  <div class="prog-text" id="prog-text"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats" id="stats">
+  <div class="sc"><div class="sn" id="st0">0</div><div class="sl">Total</div></div>
+  <div class="sc"><div class="sn" id="st1">0</div><div class="sl">Klinik & Dokter</div></div>
+  <div class="sc"><div class="sn" id="st2">0</div><div class="sl">Apotek</div></div>
+  <div class="sc"><div class="sn" id="st3">0</div><div class="sl">Lainnya</div></div>
+  <div class="sc"><div class="sn" id="st4">0</div><div class="sl">Ada Telepon</div></div>
+  <div class="sc"><div class="sn" id="st5">0</div><div class="sl">Mitra Aktif</div></div>
+</div>
+
+<!-- FILTER -->
+<div class="filter-bar" id="fbar">
+  <input type="text" id="fq" placeholder="🔍 Cari nama / alamat..." oninput="applyFilter()">
+  <select id="fcat" onchange="applyFilter()">
+    <option value="">Semua Kategori</option>
+    <option value="klinik">Klinik</option><option value="dokter">Dokter</option>
+    <option value="apotek">Apotek</option><option value="lab">Lab</option>
+    <option value="gym">Gym</option><option value="other">Lainnya</option>
+  </select>
+  <select id="fst" onchange="applyFilter()">
+    <option value="">Semua Status</option>
+    <option>Baru</option><option>Sudah Dihubungi</option><option>Mitra Aktif</option>
+  </select>
+  <select id="fph" onchange="applyFilter()">
+    <option value="">Semua</option>
+    <option value="1">Ada Telepon</option><option value="0">Belum Ada</option>
+  </select>
+</div>
+
+<!-- TABLE -->
+<div class="tbl-wrap" id="tbl">
+  <div class="empty"><div class="ico">🗺</div><h3>Belum ada data</h3><p style="font-size:12px;margin-top:4px">Setup API key lalu klik "Cari Data", atau pull dari Google Sheets.</p></div>
+</div>
+<div id="pgn"></div>
+
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="maybeClose(event)">
+  <div class="modal">
+    <h3 id="m-title">Detail Mitra</h3>
+    <div id="m-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-teal" style="flex:1" onclick="saveModal()">💾 Simpan & Sync</button>
+      <button class="btn btn-outline" onclick="closeModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let db = JSON.parse(localStorage.getItem('ol_db3') || '[]');
+let filtered = [], page = 1, PER = 25, editIdx = null;
+let service = null, mapsReady = false;
+let sheetUrl = localStorage.getItem('ol_sheet_url') || '';
+let unsyncedIds = new Set(JSON.parse(localStorage.getItem('ol_unsynced') || '[]'));
+
+// init
+if (sheetUrl) $('sheet-url').value = sheetUrl;
+
+function saveDB() {
+  localStorage.setItem('ol_db3', JSON.stringify(db));
+  localStorage.setItem('ol_unsynced', JSON.stringify([...unsyncedIds]));
+  updateBadges();
+}
+
+function updateBadges() {
+  $('b-data').textContent = db.length + ' data';
+  if (!db.length) { $('b-sync').style.display='none'; $('b-unsync').style.display='none'; return; }
+  if (unsyncedIds.size > 0) {
+    $('b-sync').style.display='none';
+    $('b-unsync').style.display='inline-block';
+    $('b-unsync').textContent = `⚠️ ${unsyncedIds.size} belum sync`;
+  } else {
+    $('b-unsync').style.display='none';
+    $('b-sync').style.display='inline-block';
+  }
+}
+
+function toast(msg, type='info', dur=2800) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${type} show`;
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── SHEETS ────────────────────────────────────────────
+async function pingSheet() {
+  const url = $('sheet-url').value.trim();
+  if (!url) { showSt('sheet-status','err','⚠️ URL belum diisi'); return; }
+  sheetUrl = url;
+  localStorage.setItem('ol_sheet_url', url);
+  showSt('sheet-status','info','⏳ Menghubungkan...');
+  try {
+    const res = await fetch(url + '?action=ping', { method:'GET' });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      showSt('sheet-status','ok','✅ ' + data.message);
+      toast('✅ Google Sheets terhubung!','ok');
+      $('btn-sync').disabled = false;
+    } else {
+      showSt('sheet-status','err','❌ ' + (data.message||'Gagal'));
+    }
+  } catch(e) {
+    // Try no-cors workaround via GET with callback
+    showSt('sheet-status','err','❌ Gagal konek. Pastikan deployment Apps Script sudah "Anyone can access".');
+  }
+}
+
+async function pullFromSheet() {
+  const url = $('sheet-url').value.trim();
+  if (!url) { showSt('sheet-status','err','⚠️ URL belum diisi'); return; }
+  sheetUrl = url;
+  localStorage.setItem('ol_sheet_url', url);
+  showSt('sheet-status','info','⏳ Mengambil data dari Google Sheets...');
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'ok' && data.data) {
+      // Merge — don't overwrite local edits
+      let added = 0;
+      data.data.forEach(r => {
+        if (r.place_id && !db.find(d => d.place_id === r.place_id)) {
+          db.push({
+            place_id: r.place_id, name: r.name, category: r.category,
+            address: r.address, phone: r.phone, rating: r.rating,
+            reviews: r.reviews, lat: r.lat, lng: r.lng,
+            status: r.status, notes: r.notes, added: r.added
+          });
+          added++;
+        }
+      });
+      saveDB(); renderStats(); applyFilter();
+      showSt('sheet-status','ok',`✅ ${added} data baru ditarik dari Sheets. Total: ${db.length}`);
+      toast(`⬇️ ${added} data ditarik dari Sheets`,'ok');
+    } else {
+      showSt('sheet-status','err','❌ ' + (data.message||'Tidak ada data'));
+    }
+  } catch(e) {
+    showSt('sheet-status','err','❌ Gagal ambil data: ' + e.message);
+  }
+}
+
+async function syncToSheet() {
+  const url = sheetUrl || $('sheet-url').value.trim();
+  if (!url) { toast('⚠️ URL Sheets belum diisi','err'); return; }
+  if (!db.length) { toast('⚠️ Tidak ada data','err'); return; }
+
+  $('btn-sync').disabled = true;
+  $('btn-sync').textContent = '⏳ Syncing...';
+  showSt('sheet-status','info',`⏳ Mengirim ${db.length} data ke Google Sheets...`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'sync_all', data: db })
+    });
+    const result = await res.json();
+    if (result.status === 'ok') {
+      unsyncedIds.clear();
+      saveDB();
+      showSt('sheet-status','ok','✅ ' + result.message);
+      toast('☁️ Sync berhasil! ' + result.synced + ' data','ok');
+      $('btn-sync').textContent = '☁️ Sync ke Sheets';
+      $('btn-sync').disabled = false;
+    } else {
+      throw new Error(result.message);
+    }
+  } catch(e) {
+    showSt('sheet-status','err','❌ Sync gagal: ' + e.message);
+    toast('❌ Sync gagal','err');
+    $('btn-sync').textContent = '☁️ Sync ke Sheets';
+    $('btn-sync').disabled = false;
+  }
+}
+
+async function syncOneToSheet(record) {
+  const url = sheetUrl;
+  if (!url) return;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update_status', place_id: record.place_id, status: record.status, notes: record.notes })
+    });
+    const r = await res.json();
+    if (r.status === 'ok') {
+      unsyncedIds.delete(record.place_id);
+      saveDB();
+      toast('☁️ Status tersync ke Sheets','ok');
+    }
+  } catch(e) { /* silent — will sync on next full sync */ }
+}
+
+// ── MAPS ──────────────────────────────────────────────
+function loadMaps() {
+  const key = $('api-key').value.trim();
+  if (!key) { showSt('maps-status','err','⚠️ API key belum diisi'); return; }
+  const old = document.getElementById('gmsdk');
+  if (old) { old.remove(); mapsReady = false; service = null; }
+  showSt('maps-status','info','⏳ Menghubungkan...');
+  const s = document.createElement('script');
+  s.id = 'gmsdk';
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=onMapsReady&language=id`;
+  s.onerror = () => showSt('maps-status','err','❌ Gagal. Pastikan Maps JavaScript API sudah di-enable dan billing aktif.');
+  document.head.appendChild(s);
+}
+
+window.onMapsReady = function() {
+  try {
+    const [lat, lng] = getCoords();
+    const map = new google.maps.Map($('gmap'), { center:{lat,lng}, zoom:13 });
+    service = new google.maps.places.PlacesService(map);
+    mapsReady = true;
+    showSt('maps-status','ok','✅ Google Maps terhubung! Siap cari data.');
+    $('btn-search').disabled = false;
+    toast('✅ Maps terhubung!','ok');
+  } catch(e) {
+    showSt('maps-status','err','❌ ' + e.message);
+  }
+};
+
+function toggleVis() { const i=$('api-key'); i.type=i.type==='password'?'text':'password'; }
+function handleArea() {
+  const c = $('area').value === 'custom';
+  $('lat-g').style.display = c?'flex':'none';
+  $('lng-g').style.display = c?'flex':'none';
+}
+function getCoords() {
+  const v = $('area').value;
+  if (v === 'custom') return [parseFloat($('c-lat').value||'-6.2615'), parseFloat($('c-lng').value||'106.7754')];
+  return v.split(',').map(Number);
+}
+
+// ── SEARCH ────────────────────────────────────────────
+async function startSearch() {
+  if (!mapsReady || !service) { toast('⚠️ Sambungkan Maps API dulu','err'); return; }
+  const chips = [...document.querySelectorAll('.chip.on')];
+  if (!chips.length) { toast('⚠️ Pilih minimal 1 kategori','err'); return; }
+
+  $('btn-search').disabled = true;
+  $('btn-search').textContent = '⏳ Mencari...';
+  $('prog-wrap').style.display = 'block';
+
+  const [lat, lng] = getCoords();
+  const radius = parseInt($('radius').value);
+  const center = new google.maps.LatLng(lat, lng);
+  const kws = chips.map(c => c.dataset.q);
+
+  for (let i = 0; i < kws.length; i++) {
+    $('prog-text').textContent = `Mencari "${kws[i]}"... (${i+1}/${kws.length})`;
+    $('prog').style.width = Math.round((i/kws.length)*100) + '%';
+    await searchKw(center, radius, kws[i]);
+    await delay(400);
+  }
+
+  $('prog').style.width = '100%';
+  $('prog-text').textContent = `✅ Selesai! ${db.length} lokasi ditemukan.`;
+  $('btn-search').disabled = false;
+  $('btn-search').textContent = '🔍 Cari Data';
+  $('btn-csv').disabled = false;
+  $('btn-clear').disabled = false;
+  $('btn-sync').disabled = false;
+
+  renderStats(); applyFilter();
+  toast(`✅ ${db.length} data ditemukan`,'ok');
+}
+
+function searchKw(center, radius, kw) {
+  return new Promise(resolve => {
+    function handle(results, status, pagination) {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        results.forEach(p => {
+          if (!db.find(d => d.place_id === p.place_id)) {
+            const rec = {
+              place_id: p.place_id, name: p.name,
+              address: p.vicinity||'', category: kw,
+              phone: '', rating: p.rating||'', reviews: p.user_ratings_total||0,
+              lat: p.geometry?.location?.lat()||'',
+              lng: p.geometry?.location?.lng()||'',
+              status: 'Baru', notes: '',
+              added: new Date().toLocaleDateString('id-ID')
+            };
+            db.push(rec);
+            unsyncedIds.add(rec.place_id);
+          }
+        });
+        saveDB();
+        if (pagination?.hasNextPage) setTimeout(() => pagination.nextPage(), 2000);
+        else resolve();
+      } else resolve();
+    }
+    service.nearbySearch({ location:center, radius, keyword:kw, language:'id' }, handle);
+  });
+}
+
+function getPhone(placeId) {
+  if (!mapsReady || !service) { toast('⚠️ Maps belum tersambung','err'); return; }
+  service.getDetails({ placeId, fields:['formatted_phone_number'] }, (result, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK) {
+      const phone = result.formatted_phone_number || '-';
+      const idx = db.findIndex(d => d.place_id === placeId);
+      if (idx >= 0) {
+        db[idx].phone = phone;
+        unsyncedIds.add(placeId);
+        saveDB(); renderTable(getDisp());
+        toast('📞 ' + phone,'ok');
+      }
+    } else toast('❌ Nomor tidak ditemukan','err');
+  });
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── RENDER ────────────────────────────────────────────
+function catC(q) {
+  if (!q) return 'other';
+  q = q.toLowerCase();
+  if (q.includes('klinik')||q.includes('puskesmas')||q.includes('rumah sakit')) return 'klinik';
+  if (q.includes('dokter')||q.includes('spesialis')) return 'dokter';
+  if (q.includes('apotek')) return 'apotek';
+  if (q.includes('lab')) return 'lab';
+  if (q.includes('gym')||q.includes('fitness')) return 'gym';
+  return 'other';
+}
+function catL(q) {
+  const m = {klinik:'🏥 Klinik',dokter:'👨‍⚕️ Dokter',apotek:'💊 Apotek',lab:'🔬 Lab',gym:'🏋️ Gym',other:'📍 Lainnya'};
+  return m[catC(q)]||q;
+}
+function stC(s) { return s==='Mitra Aktif'?'s-act':s==='Sudah Dihubungi'?'s-con':'s-new'; }
+
+function renderStats() {
+  $('stats').style.display='grid';
+  $('fbar').style.display='flex';
+  const t=db.length;
+  const kd=db.filter(d=>['klinik','dokter'].includes(catC(d.category))).length;
+  const ap=db.filter(d=>catC(d.category)==='apotek').length;
+  const ph=db.filter(d=>d.phone&&d.phone!=='-').length;
+  const ac=db.filter(d=>d.status==='Mitra Aktif').length;
+  $('st0').textContent=t; $('st1').textContent=kd; $('st2').textContent=ap;
+  $('st3').textContent=t-kd-ap; $('st4').textContent=ph; $('st5').textContent=ac;
+}
+
+function applyFilter() {
+  const q=$('fq').value.toLowerCase();
+  const cat=$('fcat').value, st=$('fst').value, ph=$('fph').value;
+  filtered = db.filter(d => {
+    return (!q||(d.name.toLowerCase().includes(q)||d.address.toLowerCase().includes(q)))
+      && (!cat||catC(d.category)===cat)
+      && (!st||d.status===st)
+      && (!ph||(ph==='1'?(d.phone&&d.phone!=='-'):(!d.phone||d.phone==='-')));
+  });
+  page = 1;
+  renderTable(filtered.length ? filtered : db);
+}
+
+function getDisp() { return filtered.length ? filtered : db; }
+
+function renderTable(data) {
+  if (!data?.length) {
+    $('tbl').innerHTML=`<div class="empty"><div class="ico">${db.length?'🔍':'🗺'}</div><h3>${db.length?'Tidak ada hasil':'Belum ada data'}</h3></div>`;
+    $('pgn').innerHTML=''; return;
+  }
+  const start=(page-1)*PER;
+  const rows=data.slice(start,start+PER).map((d,i)=>{
+    const ri=db.findIndex(x=>x.place_id===d.place_id);
+    const cc=catC(d.category);
+    const mUrl=`https://www.google.com/maps/place/?q=place_id:${d.place_id}`;
+    const wNum=d.phone?d.phone.replace(/\D/g,''):'';
+    const wUrl=wNum?`https://wa.me/${wNum.startsWith('0')?'62'+wNum.slice(1):wNum}`:'';
+    const synced=!unsyncedIds.has(d.place_id);
+    const syncIcon=synced?'<span class="sync-icon synced" title="Tersync">☁️</span>':'<span class="sync-icon unsynced" title="Belum sync">⚠️</span>';
+    return `<tr>
+      <td style="color:#bbb;font-size:11px">${start+i+1}</td>
+      <td><div class="tn">${d.name}${syncIcon}</div><span class="cb c-${cc}">${catL(d.category)}</span></td>
+      <td><div class="ta">${d.address||'—'}</div></td>
+      <td class="tp">${d.phone&&d.phone!=='-'?d.phone:`<button class="ab" onclick="getPhone('${d.place_id}')">📞 Ambil</button>`}</td>
+      <td class="tr">${d.rating?'⭐'+d.rating:'—'}</td>
+      <td><span class="sb ${stC(d.status)}">${d.status||'Baru'}</span></td>
+      <td><div class="ac">
+        <button class="ab ab-maps" onclick="window.open('${mUrl}','_blank')">🗺</button>
+        ${wUrl?`<button class="ab ab-wa" onclick="window.open('${wUrl}','_blank')">💬</button>`:''}
+        <button class="ab" onclick="openModal(${ri})">✏️</button>
+        <button class="ab ab-del" onclick="delRow(${ri})">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  $('tbl').innerHTML=`<table><thead><tr><th>#</th><th>Nama</th><th>Alamat</th><th>Telepon</th><th>Rating</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const pages=Math.ceil(data.length/PER);
+  $('pgn').innerHTML=pages>1?`<div class="pg">${Array.from({length:pages},(_,i)=>`<button class="${i+1===page?'active':''}" onclick="goPg(${i+1})">${i+1}</button>`).join('')}</div>`:'';
+}
+
+function goPg(p){page=p;renderTable(getDisp());window.scrollTo(0,400);}
+
+// ── MODAL ─────────────────────────────────────────────
+function openModal(idx) {
+  editIdx=idx; const d=db[idx];
+  $('m-title').textContent=d.name;
+  $('m-body').innerHTML=`
+    <div class="mf"><label>Alamat</label><div class="v">${d.address||'—'}</div></div>
+    <div class="mf"><label>Telepon</label><div class="v">${d.phone||'—'}</div></div>
+    <div class="mf"><label>Rating</label><div class="v">${d.rating?'⭐ '+d.rating+' ('+d.reviews+' ulasan)':'—'}</div></div>
+    <div class="mf"><label>Status Follow-Up</label>
+      <select id="m-st"><option${d.status==='Baru'?' selected':''}>Baru</option><option${d.status==='Sudah Dihubungi'?' selected':''}>Sudah Dihubungi</option><option${d.status==='Mitra Aktif'?' selected':''}>Mitra Aktif</option></select></div>
+    <div class="mf"><label>Catatan</label>
+      <textarea id="m-no" rows="3" placeholder="Nama PIC, tanggal kunjungan, hasil percakapan...">${d.notes||''}</textarea></div>`;
+  $('overlay').classList.add('open');
+}
+async function saveModal() {
+  if (editIdx===null) return;
+  db[editIdx].status=$('m-st').value;
+  db[editIdx].notes=$('m-no').value;
+  unsyncedIds.add(db[editIdx].place_id);
+  saveDB(); closeModal(); renderStats(); applyFilter();
+  toast('✅ Tersimpan','ok');
+  // Auto sync status ke sheet
+  if (sheetUrl) await syncOneToSheet(db[editIdx]);
+}
+function closeModal(){$('overlay').classList.remove('open');editIdx=null;}
+function maybeClose(e){if(e.target===$('overlay'))closeModal();}
+
+function delRow(idx) {
+  if(!confirm('Hapus data ini?')) return;
+  const pid=db[idx].place_id;
+  db.splice(idx,1); unsyncedIds.delete(pid); saveDB();
+  renderStats(); applyFilter(); toast('🗑 Dihapus','info');
+}
+
+function clearAll() {
+  if(!confirm('Hapus SEMUA data lokal?')) return;
+  db=[]; filtered=[]; unsyncedIds.clear(); saveDB();
+  $('stats').style.display='none'; $('fbar').style.display='none';
+  ['btn-csv','btn-clear'].forEach(id=>$(id).disabled=true);
+  $('tbl').innerHTML='<div class="empty"><div class="ico">🗺</div><h3>Belum ada data</h3></div>';
+  $('pgn').innerHTML='';
+  toast('🗑 Data dihapus','info');
+}
+
+function exportCSV() {
+  if(!db.length){toast('⚠️ Tidak ada data','err');return;}
+  const h=['No','Nama','Kategori','Alamat','Telepon','Rating','Ulasan','Lat','Lng','Status','Catatan','Ditambah','Maps URL'];
+  const rows=db.map((d,i)=>[i+1,d.name,d.category,d.address,d.phone||'',d.rating||'',d.reviews||'',
+    typeof d.lat==='function'?d.lat():d.lat, typeof d.lng==='function'?d.lng():d.lng,
+    d.status||'Baru',d.notes||'',d.added||'',`https://www.google.com/maps/place/?q=place_id:${d.place_id}`
+  ].map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  const csv=[h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='OneLab_Partners_'+new Date().toLocaleDateString('id-ID').replace(/\//g,'-')+'.csv';
+  a.click(); toast('📥 CSV diunduh','ok');
+}
+
+function showSt(id, type, msg) {
+  const el=$(id);
+  el.className='status-box st-'+type;
+  el.textContent=msg;
+}
+
+// category chips
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+
+// init
+if(db.length){
+  renderStats(); applyFilter(); updateBadges();
+  ['btn-csv','btn-clear','btn-sync'].forEach(id=>$(id).disabled=false);
+}
+</script>
+</body>
+</html>
